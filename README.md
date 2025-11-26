@@ -1,2 +1,3 @@
 # flatten-gitignores
-A simple tool for flattening nested `.gitignore` files into a single file.
+
+A simple Node.js tool for flattening nested `.gitignore` files into a single file.
