@@ -1,30 +1,80 @@
 import fs from "node:fs";
 import path from "node:path";
+import * as process from "node:process";
+import { parseArgs } from "node:util";
 
-// TODO: accept an input instead.
-const monorepoRoot = path.resolve(import.meta.dirname, "../..");
+const {
+  values: {
+    input: inputPath,
+    output: outputPath,
+    additions: additionsName,
+    exclude: excludePatterns,
+    help,
+  },
+} = parseArgs({
+  options: {
+    input: { type: "string" },
+    output: { type: "string" },
+    additions: { type: "string" },
+    exclude: { type: "string", multiple: true },
+    help: { type: "boolean" },
+  },
+});
 
-const flattened = flattenAllGitignores();
-fs.writeFileSync(
-  path.resolve(monorepoRoot, ".prettierignore"),
-  flattened,
-  "utf-8"
-);
+if (help) {
+  const usage = [
+    "Usage: node index.js [--input <path>] [--output <file>]",
+    "             [--additions <filename>] [--exclude <glob> ...] [--help]",
+    "",
+    "Options:",
+    "  --input <path>       Input root for globbing; defaults to current CWD.",
+    "  --output <file>      Output file path; defaults to <input>/.flattened-ignore.",
+    "  --additions <name>   Optional additions file name to include (e.g. .prettierignore-additions).",
+    "  --exclude <glob>     Glob(s) to exclude; pass multiple to add more (default: **/node_modules/**).",
+    "  --help               Show this help message.",
+    "",
+    "Examples:",
+    "  node index.js",
+    "  node index.js --input ./packages/app",
+    '  node index.js --additions .prettierignore-additions --exclude "**/dist/**" --exclude "**/build/**"',
+    "  node index.js --output ./out/.flattened-ignore",
+  ].join("\n");
+  console.log(usage);
+  process.exit(0);
+}
+
+const cwd = inputPath ? path.resolve(process.cwd(), inputPath) : process.cwd();
+const output = outputPath
+  ? path.resolve(process.cwd(), outputPath)
+  : path.resolve(cwd, ".flattened-ignore");
+
+const flattened = flattenAllGitignores({
+  cwd,
+  additionsName,
+  excludePatterns: excludePatterns?.length
+    ? excludePatterns
+    : ["**/node_modules/**"],
+});
+fs.writeFileSync(output, flattened, "utf-8");
 
 /**
  * Flatten all gitignores into a single one.
  *
  * @returns {string}
  */
-function flattenAllGitignores() {
-  const entries = fs.globSync(
-    [".prettierignore-additions", ".gitignore", "**/*/.gitignore"],
-    {
-      cwd: monorepoRoot,
-      exclude: ["**/node_modules/**"],
-      withFileTypes: true,
-    }
-  );
+function flattenAllGitignores({ cwd, additionsName, excludePatterns }) {
+  const patterns = [".gitignore", "**/*/.gitignore"];
+
+  // If an additions file name was provided, include it; otherwise omit.
+  if (additionsName) {
+    patterns.unshift(additionsName);
+  }
+
+  const entries = fs.globSync(patterns, {
+    cwd,
+    exclude: excludePatterns ?? ["**/node_modules/**"],
+    withFileTypes: true,
+  });
 
   let prettierIgnore = [
     "################################################################################",
@@ -47,7 +97,7 @@ function flattenAllGitignores() {
 
     // Create a relative path with a leading and trailing slash.
     const relativePath = path
-      .relative(monorepoRoot, entry.parentPath)
+      .relative(cwd, entry.parentPath)
       .replace(/^\/*/, "/")
       .replace(/\/*$/, "/");
 
