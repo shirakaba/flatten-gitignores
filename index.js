@@ -5,55 +5,77 @@ import { parseArgs } from "node:util";
 
 const {
   values: {
-    input: inputPath,
+    ignoreFile: ignoreFile = ".gitignore",
+    cwd: searchRoot,
     output: outputPath,
-    additions: additionsName,
+    prepend: prependPath,
+    append: appendPath,
     exclude: excludePatterns,
+    "no-default-excludes": noDefaultExcludes,
     help,
   },
 } = parseArgs({
   options: {
-    input: { type: "string" },
+    ignoreFile: { type: "string" },
+    cwd: { type: "string" },
     output: { type: "string" },
-    additions: { type: "string" },
+    prepend: { type: "string" },
+    append: { type: "string" },
     exclude: { type: "string", multiple: true },
+    "no-default-excludes": { type: "boolean" },
     help: { type: "boolean" },
   },
 });
 
 if (help) {
   const usage = [
-    "Usage: node index.js [--input <path>] [--output <file>]",
-    "             [--additions <filename>] [--exclude <glob> ...] [--help]",
+    "Usage: npx flatten-gitignores [--ignore-file] [--cwd <path>] [--output <file>]",
+    "                              [--prepend <path>] [--append <path>] [--exclude <glob> ...]",
+    "                              [--no-default-excludes] [--help]",
     "",
-    "Options:",
-    "  --input <path>       Input root for globbing; defaults to current CWD.",
-    "  --output <file>      Output file path; defaults to <input>/.flattened-ignore.",
-    "  --additions <name>   Optional additions file name to include (e.g. .prettierignore-additions).",
-    "  --exclude <glob>     Glob(s) to exclude; pass multiple to add more (default: **/node_modules/**).",
-    "  --help               Show this help message.",
+    "Flags (all optional):",
+    '  --ignore-file <file>   The ignore file name to search for. Defaults to ".gitignore".',
+    "  --cwd <path>           The search root / working directory; defaults to current CWD.",
+    "  --output <file>        Output file path; defaults to <cwd>/.gitignore-collated.",
+    "  --prepend <path>       Path to an additional ignore file to prepend.",
+    "                         Resolved relative to CWD.",
+    "  --append <path>        Path to an additional ignore file to append.",
+    "                         Resolved relative to CWD.",
+    "  --exclude <glob>       Glob(s) to exclude from the search for ignore files.",
+    '                         Defaults to "**/node_modules/**".',
+    "                         Pass one or more --exclude flags to add more.",
+    "                         To omit the defaults, pass --no-default-excludes.",
+    '  --no-default-excludes  Omit the default excludes ("**/node_modules/**").',
+    "  --help                 Show this help message.",
     "",
     "Examples:",
-    "  node index.js",
-    "  node index.js --input ./packages/app",
-    '  node index.js --additions .prettierignore-additions --exclude "**/dist/**" --exclude "**/build/**"',
-    "  node index.js --output ./out/.flattened-ignore",
+    "  npx flatten-gitignores",
+    "  npx flatten-gitignores --cwd ./packages/app",
+    "  npx flatten-gitignores --output ./.easignore --prepend .easignore-prepend --append .easignore-append",
+    "  npx flatten-gitignores --exclude **/dist/** --exclude **/build/**",
+    "  npx flatten-gitignores --no-default-excludes",
+    "  npx flatten-gitignores --ignore-file .dockerignore",
   ].join("\n");
   console.log(usage);
   process.exit(0);
 }
 
-const cwd = inputPath ? path.resolve(process.cwd(), inputPath) : process.cwd();
+const cwd = searchRoot
+  ? path.resolve(process.cwd(), searchRoot)
+  : process.cwd();
 const output = outputPath
   ? path.resolve(process.cwd(), outputPath)
-  : path.resolve(cwd, ".flattened-ignore");
+  : path.resolve(cwd, ".gitignore-collated");
 
 const flattened = flattenAllGitignores({
   cwd,
-  additionsName,
-  excludePatterns: excludePatterns?.length
-    ? excludePatterns
-    : ["**/node_modules/**"],
+  prependPath,
+  appendPath,
+  excludePatterns: [
+    ...(noDefaultExcludes ? [] : ["**/node_modules/**"]),
+    ...(excludePatterns ?? []),
+  ],
+  ignoreFile,
 });
 fs.writeFileSync(output, flattened, "utf-8");
 
@@ -62,17 +84,26 @@ fs.writeFileSync(output, flattened, "utf-8");
  *
  * @returns {string}
  */
-function flattenAllGitignores({ cwd, additionsName, excludePatterns }) {
-  const patterns = [".gitignore", "**/*/.gitignore"];
+function flattenAllGitignores({
+  cwd,
+  prependPath,
+  appendPath,
+  excludePatterns: exclude,
+  ignoreFile,
+}) {
+  const patterns = [ignoreFile, `**/*/${ignoreFile}`];
 
-  // If an additions file name was provided, include it; otherwise omit.
-  if (additionsName) {
-    patterns.unshift(additionsName);
+  // If additions files were provided, include them; otherwise omit.
+  if (prependPath) {
+    patterns.unshift(prependPath);
+  }
+  if (appendPath) {
+    patterns.push(appendPath);
   }
 
   const entries = fs.globSync(patterns, {
     cwd,
-    exclude: excludePatterns ?? ["**/node_modules/**"],
+    exclude,
     withFileTypes: true,
   });
 
@@ -101,13 +132,13 @@ function flattenAllGitignores({ cwd, additionsName, excludePatterns }) {
       .replace(/^\/*/, "/")
       .replace(/\/*$/, "/");
 
-    prettierIgnore += `### START ${relativePath}.gitignore ###\n`;
+    prettierIgnore += `### START ${relativePath}${ignoreFile} ###\n`;
 
     const flattened = flattenGitignore({ contents, relativePath });
 
     prettierIgnore += `${flattened ?? "# (empty)"}\n`;
 
-    prettierIgnore += `### END ${relativePath}.gitignore ###\n\n\n`;
+    prettierIgnore += `### END ${relativePath}${ignoreFile} ###\n\n\n`;
   }
 
   return `${prettierIgnore.trim()}\n`;
