@@ -8,9 +8,7 @@ Useful for supporting tools that expect a single ignore file and don't resolve n
 
 Run the script with Node, passing optional flags to customize input, output, additions, and excludes.
 
-```sh
-npx flatten-gitignores [--ignore-file] [--cwd <path>] [--output <file>] [--prepend <path>] [--append <path>] [--exclude <glob> ...] [--no-default-excludes] [--help]
-```
+`npx flatten-gitignores [--ignore-file] [--cwd <path>] [--output <file>] [--prepend <path>] [--append <path>] [--exclude <glob> ...] [--no-default-excludes] [--help]`
 
 ### Flags
 
