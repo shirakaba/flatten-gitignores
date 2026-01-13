@@ -54,7 +54,7 @@ if (help) {
     "  npx flatten-gitignores --output ./.easignore --prepend .easignore-prepend --append .easignore-append",
     "  npx flatten-gitignores --exclude **/dist/** --exclude **/build/**",
     "  npx flatten-gitignores --no-default-excludes",
-    "  npx flatten-gitignores --ignore-file .dockerignore",
+    "  npx flatten-gitignores --ignore-file _gitignore",
   ].join("\n");
   console.log(usage);
   process.exit(0);

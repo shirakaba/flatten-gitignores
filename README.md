@@ -58,3 +58,9 @@ npx flatten-gitignores [--ignore-file] [--cwd <path>] [--output <file>] [--prepe
   - Collates all `.gitignore` files found into a `.easignore` file in the current directory.
   - `--prepend`: Prepends the contents of `.easignore-prepend` into that `.easignore` file.
   - `--append`: Appends the contents of `.easignore-append` into that `.easignore` file.
+
+- Collate a file other than `.gitignore` (`--ignore-file`):
+	```sh
+	npx flatten-gitignores --ignore-file _gitignore
+	```
+  - Collates all `_gitignore` files found into a `.gitignore-collated` file in the current directory (possibly useful for ecosystems like npm, which do not support bundling a `.gitignore` file into your npm package, so people have to work around it with a `_gitignore` file or similar that they rename to `.gitignore` after unpacking).
