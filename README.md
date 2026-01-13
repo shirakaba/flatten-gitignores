@@ -21,7 +21,7 @@ Run the script with Node, passing optional flags to customize input, output, add
 - `--no-default-excludes`: Omit the default excludes (`**/node_modules/**`).
 - `--help`: Show help and exit.
 
-### Examples
+### Example usage
 
 - Default behavior:
 	```sh
@@ -156,4 +156,4 @@ Note how all rules have been normalised with `/`, `/**`, and subpaths, as necess
 
 I implemented this in a hurry one day with reference to the `.gitignore` [pattern format](https://git-scm.com/docs/gitignore#_pattern_format) docs. I think I've *probably* covered all cases, i.e. comments, backslashes, `**`, etc. – but as you can see, there are no tests, so this is all just talk.
 
-All I can say is that this works well enough that it helped me cut 4.55 GB off my EAS archive!
+All I can say is that this works well enough that it helped me cut 4.55 GB off my EAS project archive!
