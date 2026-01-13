@@ -93,14 +93,6 @@ function flattenAllGitignores({
 }) {
   const patterns = [ignoreFile, `**/*/${ignoreFile}`];
 
-  // If additions files were provided, include them; otherwise omit.
-  if (prependPath) {
-    patterns.unshift(prependPath);
-  }
-  if (appendPath) {
-    patterns.push(appendPath);
-  }
-
   const entries = fs.globSync(patterns, {
     cwd,
     exclude,
@@ -116,6 +108,12 @@ function flattenAllGitignores({
     "",
   ].join("\n");
 
+  if (prependPath) {
+    const contents = fs.readFileSync(path.resolve(cwd, prependPath), "utf-8");
+    const { dir, base } = path.parse(prependPath);
+    prettierIgnore += formatIgnoreSection({ contents, dir, fileName: base });
+  }
+
   for (const entry of entries) {
     if (!entry.isFile()) {
       continue;
@@ -126,22 +124,34 @@ function flattenAllGitignores({
       "utf-8"
     );
 
-    // Create a relative path with a leading and trailing slash.
-    const relativePath = path
-      .relative(cwd, entry.parentPath)
-      .replace(/^\/*/, "/")
-      .replace(/\/*$/, "/");
+    prettierIgnore += formatIgnoreSection({
+      contents,
+      dir: entry.parentPath,
+      fileName: ignoreFile,
+    });
+  }
 
-    prettierIgnore += `### START ${relativePath}${ignoreFile} ###\n`;
-
-    const flattened = flattenGitignore({ contents, relativePath });
-
-    prettierIgnore += `${flattened ?? "# (empty)"}\n`;
-
-    prettierIgnore += `### END ${relativePath}${ignoreFile} ###\n\n\n`;
+  if (appendPath) {
+    const contents = fs.readFileSync(path.resolve(cwd, appendPath), "utf-8");
+    const { dir, base } = path.parse(appendPath);
+    prettierIgnore += formatIgnoreSection({ contents, dir, fileName: base });
   }
 
   return `${prettierIgnore.trim()}\n`;
+}
+
+function formatIgnoreSection({ contents, dir, fileName }) {
+  const relativePath = path
+    .relative(cwd, dir)
+    .replace(/^\/*/, "/")
+    .replace(/\/*$/, "/");
+
+  let section = `### START ${relativePath}${fileName} ###\n`;
+  const flattened = flattenGitignore({ contents, relativePath });
+  section += `${flattened ?? "# (empty)"}\n`;
+  section += `### END ${relativePath}${fileName} ###\n\n\n`;
+
+  return section;
 }
 
 /**
