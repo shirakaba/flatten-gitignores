@@ -1,5 +1,6 @@
 {
   "name": "flatten-gitignores",
+  "version": "1.0.0",
   "author": "Jamie Birch",
   "type": "module",
   "license": "MIT"
